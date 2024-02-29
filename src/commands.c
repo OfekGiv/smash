@@ -1,8 +1,9 @@
 //		commands.c
 //********************************************
+
+// #define _POSIX_C_SOURCE 200809L  // Include this line for kill to be available
 #include "commands.h"
 #include "linkedList.h"
-
 
 
 char lastPwd[MAX_LINE_SIZE] = {0}; 
@@ -19,9 +20,10 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	char* cmd; 
 	char* args[MAX_ARG];
 	char pwd[MAX_LINE_SIZE];
+	char* tmpArg;
 	char* delimiters = " \t\n";  
 	int i = 0, num_arg = 0;
-	bool illegal_cmd = FALSE; // illegal command
+	// bool illegal_cmd = FALSE; // illegal command
 	struct Job* headJob = *jobList;
 	int jobID;
 	int jobPid;
@@ -29,6 +31,11 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	int status;
 	struct Job* current;
 	int signum;
+	FILE *file1;
+	FILE *file2;
+	char char1;
+	char char2;
+	
 	
 	cmd = strtok(lineSize, delimiters);
 	if (cmd == NULL)
@@ -40,6 +47,8 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		if (args[i] != NULL) 
 			num_arg++; 
 	}
+	
+	
 	
 /*************************************************/
 // Built in Commands PLEASE NOTE NOT ALL REQUIRED
@@ -88,7 +97,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	/*************************************************/
 	else if (!strcmp(cmd, "jobs")) 
 	{
-		removeTerminatedProcesses(jobList);
+		// removeTerminatedProcesses(jobList);
  		printJobList(*jobList);
 	}
 	/*************************************************/
@@ -155,7 +164,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		// Check invalid arguments
 		if (num_arg > 1)
 		{
-			printf("smash error: fg: invalid arguments\n");
+			printf("smash error: bg: invalid arguments\n");
 			return 0;
 		}
 		
@@ -190,7 +199,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 			jobID = atoi(args[1]);
 			if (jobID == 0) // atoi conversion failed. argument is non-integer
 			{
-				printf("smash error: fg: invalid arguments\n");
+				printf("smash error: bg: invalid arguments\n");
 				return 0;
 			}
 			
@@ -266,16 +275,25 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		// should be only two arguments for this command
    		if (num_arg != 2) 
 		{
-			printf("smash error: fg: invalid arguments\n");
+			printf("smash error: kill: invalid arguments\n");
 			return 0;
 		} 
+		
+		tmpArg = args[1];
+		
+		if (tmpArg[0] != '-')
+		{
+			printf("smash error: kill: invalid arguments\n");
+			return 0;
+		}
+		
 		// convert ascii to integer
-		signum = atoi(args[1]);
+		signum = atoi(tmpArg + 1);
 		jobID = atoi(args[2]);
 		// atoi conversion failed. argument is non-integer
 		if (jobID == 0 || signum == 0) 
 		{
-			printf("smash error: fg: invalid arguments\n");
+			printf("smash error: kill: invalid arguments\n");
 			return 0;
 		}
 		
@@ -298,7 +316,49 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	/*************************************************/	
 	else if (!strcmp(cmd, "diff"))
 	{
-   		
+		if(args[1] == NULL || args[2] == NULL || num_arg != 2)
+		{
+			printf("smash error: diff: invalid arguments\n");
+		}
+		file1 = fopen(args[1],"r");
+		if (file1 == NULL)
+		{
+			perror("Error opening file");
+			return 0;
+		}
+		
+		file2 = fopen(args[2],"r");
+		if (file2 == NULL)
+		{
+			perror("Error opening file");
+			return 0;
+		}
+				
+		while(1)
+		{
+			char1 = fgetc(file1);
+			char2 = fgetc(file2);
+			if (char1 == EOF && char2 == EOF)
+			{
+				printf("0\n");
+				return 0;
+			}
+			else if (char1 == EOF && char2 != EOF)
+			{
+				printf("1\n");
+				return 0;
+			}
+			else if (char1 != EOF && char2 == EOF)
+			{
+				printf("1\n");
+				return 0;
+			}
+			else if (char1 != char2)
+			{
+				printf("1\n");
+				return 0;
+			}
+		}
 	} 
 	/*************************************************/	
 	else // external command
@@ -306,11 +366,11 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		ExeExternal(args, cmdString);
 	 	return 0;
 	}
-	if (illegal_cmd == TRUE)
-	{
-		printf("smash error: > \"%s\"\n", cmdString);
-		return 1;
-	}
+	// if (illegal_cmd == TRUE)
+	// {
+		// printf("smash error: > \"%s\"\n", cmdString);
+		// return 1;
+	// }
     return 0;
 }
 //**************************************************************************************

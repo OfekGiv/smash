@@ -1,0 +1,60 @@
+bug:
+
+1. running a process in fg and stopping by ctrz-z mutiple times is buggy <<<<<<<<<<<<<<<<<< Fixed
+2. Stopping a process does not really stop it. It only adds the process to job list <<<<<<< Not an issue
+3.  smash > /bin/sleep 25
+	^Z
+	smash: caught ctrl-Z
+	smash: process 7459 was stopped
+	child process status: 0
+	smash > /bin/sleep 25
+	^Z
+	smash: caught ctrl-Z
+	smash: process 7460 was stopped
+	child process status: 0
+	smash > /bin/sleep 25 &
+	smash > jobs
+	[1] /bin/sleep 25 : 7459 18 secs (stopped)
+	[2] /bin/sleep 25 : 7460 5 secs (stopped)
+	[3] /bin/sleep 25 & : 7461 1 secs 
+	smash > bg 2
+	/bin/sleep 25 : 7460
+	smash > jobs
+	[1] /bin/sleep 25 : 7459 32 secs (stopped)
+	[2] /bin/sleep 25 : 7460 19 secs 
+	[3] /bin/sleep 25 & : 7461 15 secs 
+	smash > jobs
+	[1] /bin/sleep 25 : 7459 38 secs (stopped)
+	[3] /bin/sleep 25 & : 7461 21 secs 
+	smash > /bin/sleep 25
+	smash > jobs
+	##############
+	the last /bin/sleep 25 did not run in foreground <<<<<<<<<<<<<<<<<<<<<<<<< Fixed
+	
+4.  smash > /bin/sleep 20 &
+	smash > kill 9 1
+	signal number 9 was sent to pid 8339
+	smash > jobs
+	[1] /bin/sleep 20 & : 8339 6 secs 
+	##############
+	killing a signal with kill command does not remove the job for job list <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Fixed
+	
+5.  Bug with removing terminated jobs. calling 'jobs' does not terminate all finished processes.  <<<<<<<< Fixed
+
+6.  add - to kill command before number of signal <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Fixed
+
+7.  add built-it command invalid parameters error <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Fixed
+
+8.  Jobs are removed before any issuing any command, before printing 'jobs' and before adding any new job <<<<< Added in main before calling BgCmd()
+
+Questions
+
+1. Should we remove exit(EXIT_FAILURE) from linked list functions?
+
+2. Should functions that fail return 1?
+
+TODOs
+
+1. Add comments with function explanation
+
+2. Remove copy lines from Makefile

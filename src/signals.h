@@ -1,5 +1,6 @@
 #ifndef _SIGS_H
 #define _SIGS_H
+#define _XOPEN_SOURCE 700  // Include this line for setpgid to be available
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h> 
