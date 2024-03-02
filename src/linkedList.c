@@ -127,26 +127,7 @@ void removeTerminatedProcesses(struct Job** head)
 			}
 		}	
 	}
-	// while ((terminatedPid = waitpid(-1,&status,WNOHANG)) != -1 && errno != ECHILD)
-	// {
-		// // waitpid returns -1 on failrue
-		// if (terminatedPid == -1 && errno != ECHILD) 
-		// {
-			// perror("waitpid");
-			// exit(EXIT_FAILURE);
-		// }
-		// // waitpid returns the id of the child process
-		// else if (terminatedPid > 0)
-		// {
-			// // check if child process exited
-			// if (WIFEXITED(status) || WIFSIGNALED(status)) 
-			// {
-				// // remove child process from job list
-				// removeJobByPid(head,terminatedPid);
-			// }
-			
-		// }
-	// }		
+
 }
 
 int continueJobInBg(struct Job** head, int jobID,int* jobPid,char jobCommand[MAX_LINE_SIZE]) 
@@ -195,15 +176,6 @@ int searchStoppedJobs(struct Job** head, int* jobPid,char jobCommand[MAX_LINE_SI
 	return NOSTOPPEDJOBS;                                // return no stopped job found status
 }
 
-// void printJobList(struct Job* head) {
-    // struct Job* current = head;
-    
-    // while (current != NULL) {
-        // current->secondsElapsed = (int)difftime(time(NULL), current->lastTimeCheckedInSeconds);
-        // printf("[%d] %s : %d %d\n", current->jobID, (char *)current->command, current->processID, current->secondsElapsed);
-        // current = current->next;
-    // }
-// }
 
 void printJobList(struct Job* head)
 {

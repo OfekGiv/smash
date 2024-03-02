@@ -2,7 +2,7 @@
 #define _COMMANDS_H
 #define _XOPEN_SOURCE 700  // Include this line for setpgid to be available
 
-#define _POSIX_C_SOURCE 200809L  // Include this line for kill to be available
+
 #include <unistd.h> 
 #include <stdio.h>
 #include <time.h>

@@ -1,10 +1,8 @@
 //		commands.c
 //********************************************
 
-// #define _POSIX_C_SOURCE 200809L  // Include this line for kill to be available
 #include "commands.h"
 #include "linkedList.h"
-
 
 char lastPwd[MAX_LINE_SIZE] = {0}; 
 int fgPid;
@@ -17,24 +15,21 @@ char fgCommand[MAX_LINE_SIZE];
 //**************************************************************************************
 int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 {
-	char* cmd; 
-	char* args[MAX_ARG];
-	char pwd[MAX_LINE_SIZE];
-	char* tmpArg;
+	char* cmd;                     // current command
+	char* args[MAX_ARG];           // current command arguments
+	char pwd[MAX_LINE_SIZE];       //
 	char* delimiters = " \t\n";  
 	int i = 0, num_arg = 0;
 	// bool illegal_cmd = FALSE; // illegal command
-	struct Job* headJob = *jobList;
-	int jobID;
-	int jobPid;
-	char command[MAX_LINE_SIZE];
-	int status;
+	
+	// 
+	int jobID;                    // variable that stores job ID
+	int jobPid;                   // variable that stores job PID
+	char command[MAX_LINE_SIZE];  // buffer that stores command string from the linked List functions
+	int status;                   // variable that holds return statuses of the linked list functions
 	struct Job* current;
-	int signum;
-	FILE *file1;
-	FILE *file2;
-	char char1;
-	char char2;
+	
+	
 	
 	
 	cmd = strtok(lineSize, delimiters);
@@ -59,7 +54,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	{
 		if (num_arg > 1) {
 			printf("smash error: cd: too many arguments\n");
-			return 1;
+			return -1;
 		}
 		
 		// Last PWD
@@ -72,7 +67,11 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 			}
 			else // return to OLDPWD
 			{
-				getcwd(pwd,MAX_LINE_SIZE); // save current pwd
+				if (getcwd(pwd,MAX_LINE_SIZE) == NULL) // save current pwd
+				{
+					perror("smash error: chdir failed");
+					return -1;
+				}
 				chdir(lastPwd);           // change directory to last pwd
 				strcpy(lastPwd,pwd);     // save new last pwd
 			}	
@@ -114,17 +113,17 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		if (*jobList == NULL) 
 		{
 			printf("smash error: fg: jobs list is empty\n");
-			return 0;
+			return -1;
 		}
 		
 		// Check invalid arguments
 		if (num_arg > 1)
 		{
 			printf("smash error: fg: invalid arguments\n");
-			return 0;
+			return -1;
 		}
-		
 		// parse the job ID
+		struct Job* headJob = *jobList;
 		if (num_arg == 0)
 		{
 			jobID = headJob->jobID;
@@ -136,16 +135,16 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 			if (jobID == 0) // atoi conversion failed. argument is non-integer
 			{
 				printf("smash error: fg: invalid arguments\n");
-				return 0;
+				return -1;
 			}
 			
 		}
-		// removeJobByJobId searches for job with jobID in the job list, and removes the job if found
+		// removeJobByJobId searches for job with jobID in the job list, and removes the job if found. Function also returns the job PID and command string
 		status = removeJobByJobId(jobList, jobID,&jobPid,command);
 		if (status == -1)
 		{
 			printf("smash error: fg: job-id %d does not exist\n",jobID);
-			return 0;
+			return -1;
 		}
 		
 		printf("%s : %d\n",command, jobPid);
@@ -165,13 +164,13 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		if (num_arg > 1)
 		{
 			printf("smash error: bg: invalid arguments\n");
-			return 0;
+			return -1;
 		}
 		
 		// parse the job ID
 		if (num_arg == 0)
 		{
-			// search for stopped processes
+			// search for stopped processes. if found returns job PID and command string of the job
 			status = searchStoppedJobs(jobList, &jobPid, command);
 			switch (status)
 			{
@@ -200,10 +199,10 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 			if (jobID == 0) // atoi conversion failed. argument is non-integer
 			{
 				printf("smash error: bg: invalid arguments\n");
-				return 0;
+				return -1;
 			}
 			
-			// search job with this jobId and run in bg if found and if it was stopped
+			// search job with this jobId and run in bg if found and if it was stopped. returns job ID and command string of the job
 			status = continueJobInBg(jobList, jobID,&jobPid,command);
 			switch (status)
 			{
@@ -230,7 +229,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 				
 			}
 			
-			return 0;
+			return -1;
 		}
 	}
 	/*************************************************/
@@ -247,7 +246,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 				printf("Sending SIGTERM…\n");
 				if (kill(current->processID,SIGTERM) == -1)
 				{
-					perror("kill");
+					perror("quit kill");
 				}
 				sleep(5);
 				waitpid(current->processID,&status,WNOHANG);
@@ -256,7 +255,7 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 					printf("(5 sec passed) Sending SIGKILL…\n");
 					if (kill(current->processID,SIGKILL) == -1)
 					{
-						perror("kill");
+						perror("quit kill");
 					}
 				}
 				free(current);
@@ -276,25 +275,25 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
    		if (num_arg != 2) 
 		{
 			printf("smash error: kill: invalid arguments\n");
-			return 0;
+			return -1;
 		} 
 		
-		tmpArg = args[1];
+		char* tmpArg = args[1];
 		
 		if (tmpArg[0] != '-')
 		{
 			printf("smash error: kill: invalid arguments\n");
-			return 0;
+			return -1;
 		}
 		
 		// convert ascii to integer
-		signum = atoi(tmpArg + 1);
+		int signum = atoi(tmpArg + 1);
 		jobID = atoi(args[2]);
 		// atoi conversion failed. argument is non-integer
 		if (jobID == 0 || signum == 0) 
 		{
 			printf("smash error: kill: invalid arguments\n");
-			return 0;
+			return -1;
 		}
 		
 		current = getJobByJobId(jobList,jobID); // get job with the specified jobid
@@ -304,11 +303,10 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		}
 		else // found job with the specified jobid
 		{
-			// printf("jobID: %d signal: %d\n",jobID,signum);
 			if (kill(current->processID,signum))
 			{
 				perror("kill");
-				return 0;
+				return -1;
 			}
 			printf("signal number %d was sent to pid %d\n",signum,current->processID);
 		}
@@ -316,6 +314,12 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 	/*************************************************/	
 	else if (!strcmp(cmd, "diff"))
 	{
+		
+		FILE *file1;
+		FILE *file2;
+		char char1;
+		char char2;
+			
 		if(args[1] == NULL || args[2] == NULL || num_arg != 2)
 		{
 			printf("smash error: diff: invalid arguments\n");
@@ -324,14 +328,14 @@ int ExeCmd(struct Job **jobList, char* lineSize, char* cmdString)
 		if (file1 == NULL)
 		{
 			perror("Error opening file");
-			return 0;
+			return -1;
 		}
 		
 		file2 = fopen(args[2],"r");
 		if (file2 == NULL)
 		{
 			perror("Error opening file");
-			return 0;
+			return -1;
 		}
 				
 		while(1)
@@ -394,11 +398,9 @@ void ExeExternal(char *args[MAX_ARG], char* cmdString)
 				// Child Process
 				setpgrp();
 				
-				if (execv(args[0],args) == -1)
-				{
-					perror("smash error");
-				}
-				exit(EXIT_SUCCESS);
+				execv(args[0],args);
+				perror("smash error");
+				exit(EXIT_FAILURE);
 		
 		default:
 				fgPid = pID;
@@ -423,17 +425,11 @@ int BgCmd(char* lineSize, struct Job **jobList)
 	char *args[MAX_ARG];
 	int i = 0, num_arg = 0;
 	int pID;
-	
-	size_t lineSizeLength = strlen(lineSize);
-	
-    if (lineSizeLength > 0 && lineSize[lineSizeLength - 1] == '\n')
-	{
-		strncpy(bgLine,lineSize,strlen(lineSize)-1);
-		bgLine[sizeof(bgLine) - 1] = '\0';  // Null-terminate the string
-	}
-	
+		
 	if (lineSize[strlen(lineSize)-2] == '&')
 	{
+		strcpy(bgLine,lineSize);
+		bgLine[strlen(bgLine)-1] = '\0';
 		lineSize[strlen(lineSize)-2] = '\0';
 		Command = strtok(lineSize, delimiters);
 		if (Command == NULL)
@@ -457,17 +453,11 @@ int BgCmd(char* lineSize, struct Job **jobList)
 				// Child Process
 				setpgrp();
 				
-				if (execv(Command,args) == -1)
-				{
-					perror("smash error");
-				}
-				exit(EXIT_SUCCESS);
-								
-				
+				execv(Command,args);
+				perror("smash error");
+				exit(EXIT_FAILURE);
 		
 		default:
-				// waitpid(pID, NULL, WNOHANG);
-									
 				addJob(jobList,bgLine,pID,time(NULL),0,0);
 		}
 	
