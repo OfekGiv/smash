@@ -145,6 +145,6 @@
    echo "false_external_job"
    echo "false_external_background_job &"
    echo "jobs"
-
+   sleep 3
    echo "quit"
 } | ./smash
